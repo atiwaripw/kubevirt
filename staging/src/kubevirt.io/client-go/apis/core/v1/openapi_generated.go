@@ -464,6 +464,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap":                                      schema_client_go_apis_core_v1_InterfaceMacvtap(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade":                                   schema_client_go_apis_core_v1_InterfaceMasquerade(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV":                                        schema_client_go_apis_core_v1_InterfaceSRIOV(ref),
+		"kubevirt.io/client-go/apis/core/v1.InterfaceVhostuser":                                        schema_client_go_apis_core_v1_InterfaceVhostuser(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceSlirp":                                        schema_client_go_apis_core_v1_InterfaceSlirp(ref),
 		"kubevirt.io/client-go/apis/core/v1.KVMTimer":                                              schema_client_go_apis_core_v1_KVMTimer(ref),
 		"kubevirt.io/client-go/apis/core/v1.KernelBoot":                                            schema_client_go_apis_core_v1_KernelBoot(ref),
@@ -21262,6 +21263,11 @@ func schema_client_go_apis_core_v1_Interface(ref common.ReferenceCallback) commo
 							Ref: ref("kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap"),
 						},
 					},
+					"vhostuser": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("kubevirt.io/client-go/api/v1.InterfaceVhostuser"),
+						},
+					},
 					"ports": {
 						SchemaProps: spec.SchemaProps{
 							Description: "List of ports to be forwarded to the virtual machine.",
@@ -21314,7 +21320,7 @@ func schema_client_go_apis_core_v1_Interface(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"kubevirt.io/client-go/apis/core/v1.DHCPOptions", "kubevirt.io/client-go/apis/core/v1.InterfaceBridge", "kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap", "kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade", "kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV", "kubevirt.io/client-go/apis/core/v1.InterfaceSlirp", "kubevirt.io/client-go/apis/core/v1.Port"},
+			"kubevirt.io/client-go/apis/core/v1.DHCPOptions", "kubevirt.io/client-go/apis/core/v1.InterfaceBridge", "kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap", "kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade", "kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV", "kubevirt.io/client-go/apis/core/v1.InterfaceSlirp", "kubevirt.io/client-go/apis/core/v1.InterfaceVhostuser", "kubevirt.io/client-go/apis/core/v1.Port"},
 	}
 }
 
@@ -21350,11 +21356,16 @@ func schema_client_go_apis_core_v1_InterfaceBindingMethod(ref common.ReferenceCa
 							Ref: ref("kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap"),
 						},
 					},
+					"vhostuser": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("kubevirt.io/client-go/api/v1.InterfaceVhostuser"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"kubevirt.io/client-go/apis/core/v1.InterfaceBridge", "kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap", "kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade", "kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV", "kubevirt.io/client-go/apis/core/v1.InterfaceSlirp"},
+			"kubevirt.io/client-go/apis/core/v1.InterfaceBridge", "kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap", "kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade", "kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV", "kubevirt.io/client-go/apis/core/v1.InterfaceVhostuser", "kubevirt.io/client-go/apis/core/v1.InterfaceSlirp"},
 	}
 }
 
@@ -21399,6 +21410,16 @@ func schema_client_go_apis_core_v1_InterfaceSRIOV(ref common.ReferenceCallback) 
 }
 
 func schema_client_go_apis_core_v1_InterfaceSlirp(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_client_go_apis_core_v1_InterfaceVhostuser(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
