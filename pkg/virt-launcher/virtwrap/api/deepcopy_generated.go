@@ -1876,6 +1876,16 @@ func (in *InterfaceDriver) DeepCopyInto(out *InterfaceDriver) {
 		*out = new(uint)
 		**out = **in
 	}
+	if in.RxQueueSize != nil {
+		in, out := &in.RxQueueSize, &out.RxQueueSize
+		*out = new(uint32)
+		**out = **in
+	}
+	if in.TxQueueSize != nil {
+		in, out := &in.TxQueueSize, &out.TxQueueSize
+		*out = new(uint32)
+		**out = **in
+	}
 	return
 }
 

@@ -36,7 +36,11 @@ import (
 	"sync"
 	"time"
 
+	netutil "github.com/openshift/app-netutil/lib/v1alpha"
+	netutiltype "github.com/openshift/app-netutil/pkg/types"
+
 	"kubevirt.io/kubevirt/pkg/downwardmetrics"
+
 	"kubevirt.io/kubevirt/pkg/network/cache"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/agent"
@@ -646,6 +650,17 @@ func parseDeviceAddress(addrString string) []string {
 	return addrs
 }
 
+func getInterfaceListFromPodAnnotations(ifaces []v1.Interface) (*netutiltype.InterfaceResponse, error) {
+	for _, iface := range ifaces {
+		if iface.Vhostuser != nil {
+			// Get the interfaces list from the annotations file of the pod
+			return netutil.GetInterfaces()
+		}
+	}
+	// When there is no vhostuser interface, pod interface list not required
+	return nil, nil
+}
+
 func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineInstance, useEmulation bool, options *cmdv1.VirtualMachineOptions, isMigrationTarget bool) (*converter.ConverterContext, error) {
 
 	logger := log.Log.Object(vmi)
@@ -715,6 +730,11 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 			SecureLoader: secureBoot,
 		}
 	}
+	podNetInterfaces, err := getInterfaceListFromPodAnnotations(vmi.Spec.Domain.Devices.Interfaces)
+	if err != nil {
+		logger.Reason(err).Errorf("failed to get pod network infor from annotations")
+		return nil, err
+	}
 
 	// Map the VirtualMachineInstance to the Domain
 	c := &converter.ConverterContext{
@@ -729,6 +749,7 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		UseVirtioTransitional: vmi.Spec.Domain.Devices.UseVirtioTransitional != nil && *vmi.Spec.Domain.Devices.UseVirtioTransitional,
 		PermanentVolumes:      permanentVolumes,
 		EphemeraldiskCreator:  l.ephemeralDiskCreator,
+		PodNetInterfaces:      podNetInterfaces,
 	}
 
 	if options != nil {

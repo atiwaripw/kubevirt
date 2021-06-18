@@ -30,6 +30,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/network/cache"
 	"kubevirt.io/kubevirt/pkg/network/infraconfigurators"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 )
 
 var _ = Describe("VMNetworkConfigurator", func() {
@@ -84,7 +85,7 @@ var _ = Describe("VMNetworkConfigurator", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(nics).To(ConsistOf([]podNIC{{
 					vmi:              vm,
-					podInterfaceName: primaryPodInterfaceName,
+					podInterfaceName: converter.PrimaryPodInterfaceName,
 					vmiSpecIface:     iface,
 					vmiSpecNetwork:   defaultNet,
 					handler:          vmNetworkConfigurator.handler,
