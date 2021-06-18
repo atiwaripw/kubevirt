@@ -445,10 +445,6 @@ func addPodInfoVolume(volumeMounts *[]k8sv1.VolumeMount, volumes *[]k8sv1.Volume
 	})
 }
 
-func (t *templateService) RenderLaunchManifest(vmi *v1.VirtualMachineInstance) (*k8sv1.Pod, error) {
-	return t.renderLaunchManifest(vmi, nil, false)
-}
-
 func (t *templateService) RenderMigrationManifest(vmi *v1.VirtualMachineInstance, pod *k8sv1.Pod) (*k8sv1.Pod, error) {
 	reproducibleImageIDs, err := containerdisk.ExtractImageIDsFromSourcePod(vmi, pod)
 	if err != nil {

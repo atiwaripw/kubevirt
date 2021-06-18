@@ -3197,6 +3197,8 @@ var _ = Describe("Template", func() {
 				expectedMemory.Add(*GetMemoryOverhead(vmi, arch))
 				expectedMemory.Add(*vmi.Spec.Domain.Resources.Requests.Memory())
 				Expect(pod.Spec.Containers[0].Resources.Requests.Memory().Value()).To(Equal(expectedMemory.Value()))
+			})
+		})
 		Context("with vhostuser interface", func() {
 			var (
 				vmi v1.VirtualMachineInstance

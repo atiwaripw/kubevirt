@@ -34,6 +34,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/network/errors"
 	"kubevirt.io/kubevirt/pkg/network/infraconfigurators"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 )
 
 const defaultState = cache.PodIfaceNetworkPreparationPending
@@ -97,12 +98,12 @@ func newPodNIC(vmi *v1.VirtualMachineInstance, network *v1.Network, handler netd
 		return nil, fmt.Errorf("Network not implemented")
 	}
 
-	correspondingNetworkIface := findInterfaceByNetworkName(vmi, network)
+	correspondingNetworkIface := converter.FindInterfaceByNetworkName(vmi, network)
 	if correspondingNetworkIface == nil {
 		return nil, fmt.Errorf("no iface matching with network %s", network.Name)
 	}
 
-	podInterfaceName, err := composePodInterfaceName(vmi, network)
+	podInterfaceName, err := converter.ComposePodInterfaceName(vmi, network)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +168,8 @@ func (l *podNIC) sortIPsBasedOnPrimaryIP(ipv4, ipv6 string) ([]string, error) {
 
 func (l *podNIC) PlugPhase1() error {
 
-	// There is nothing to plug for SR-IOV devices
-	if l.vmiSpecIface.SRIOV != nil {
+	// There is nothing to plug for SR-IOV devices or Vhostuser device
+	if l.vmiSpecIface.SRIOV != nil || l.vmiSpecIface.Vhostuser != nil {
 		return nil
 	}
 
@@ -235,8 +236,8 @@ func (l *podNIC) PlugPhase1() error {
 func (l *podNIC) PlugPhase2(domain *api.Domain) error {
 	precond.MustNotBeNil(domain)
 
-	// There is nothing to plug for SR-IOV devices
-	if l.vmiSpecIface.SRIOV != nil {
+	// There is nothing to plug for SR-IOV devices or Vhostuser device
+	if l.vmiSpecIface.SRIOV != nil || l.vmiSpecIface.Vhostuser != nil {
 		return nil
 	}
 
@@ -359,6 +360,7 @@ func generateInPodBridgeInterfaceName(podInterfaceName string) string {
 	return fmt.Sprintf("k6t-%s", podInterfaceName)
 }
 
+/*
 func composePodInterfaceName(vmi *v1.VirtualMachineInstance, network *v1.Network) (string, error) {
 	if isSecondaryMultusNetwork(*network) {
 		multusIndex := findMultusIndex(vmi, network)
@@ -396,6 +398,7 @@ func findMultusIndex(vmi *v1.VirtualMachineInstance, networkToFind *v1.Network) 
 func isSecondaryMultusNetwork(net v1.Network) bool {
 	return net.Multus != nil && !net.Multus.Default
 }
+*/
 
 func getPIDString(pid *int) string {
 	if pid != nil {

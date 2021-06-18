@@ -362,7 +362,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kubevirt.io/client-go/apis/core/v1.InterfaceMacvtap":                                      schema_client_go_apis_core_v1_InterfaceMacvtap(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceMasquerade":                                   schema_client_go_apis_core_v1_InterfaceMasquerade(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceSRIOV":                                        schema_client_go_apis_core_v1_InterfaceSRIOV(ref),
-		"kubevirt.io/client-go/apis/core/v1.InterfaceVhostuser":                                        schema_client_go_apis_core_v1_InterfaceVhostuser(ref),
+		"kubevirt.io/client-go/apis/core/v1.InterfaceVhostuser":                                    schema_client_go_apis_core_v1_InterfaceVhostuser(ref),
 		"kubevirt.io/client-go/apis/core/v1.InterfaceSlirp":                                        schema_client_go_apis_core_v1_InterfaceSlirp(ref),
 		"kubevirt.io/client-go/apis/core/v1.KVMTimer":                                              schema_client_go_apis_core_v1_KVMTimer(ref),
 		"kubevirt.io/client-go/apis/core/v1.KernelBoot":                                            schema_client_go_apis_core_v1_KernelBoot(ref),
