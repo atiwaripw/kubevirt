@@ -5,7 +5,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/containernetworking/plugins v0.8.2
-	github.com/coreos/go-iptables v0.4.3
+	github.com/coreos/go-iptables v0.4.5
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/prometheus-operator v0.35.0
 	github.com/emicklei/go-restful v2.10.0+incompatible
