@@ -247,3 +247,114 @@ func DifferenceHostDevicesByAlias(desiredHostDevices, actualHostDevices []api.Ho
 
 	return filteredSlice
 }
+
+func attachVhostInterface(dom deviceAttacher, Interface api.Interface) error {
+	devXML, err := xml.Marshal(Interface)
+	if err != nil {
+		return fmt.Errorf("failed to encode (xml) interface %v, err: %v", Interface, err)
+	}
+	err = dom.AttachDeviceFlags(string(devXML), affectLiveAndConfigLibvirtFlags)
+	if err != nil {
+		return fmt.Errorf("failed to attach interface %s, err: %v", devXML, err)
+	}
+
+	return nil
+}
+
+func AttachVhostInterfaces(dom deviceAttacher, Interfaces []api.Interface) error {
+	for _, Interface := range Interfaces {
+		attachVhostInterface(dom, Interface)
+	}
+	return nil
+}
+
+func FilterVHostInterfaces(domainSpec *api.DomainSpec) []api.Interface {
+	var Interfaces []api.Interface
+
+	for _, Interface := range domainSpec.Devices.Interfaces {
+		log.Log.Infof("Interface name %s", Interface.Alias.GetName())
+		if Interface.Alias != nil && strings.HasPrefix(Interface.Alias.GetName(), "vhost-user-") {
+			Interfaces = append(Interfaces, Interface)
+		}
+	}
+	return Interfaces
+}
+
+func SafelyDetachVHostInterfaces(domainSpec *api.DomainSpec, eventDetach eventRegistrar, dom deviceDetacher, timeout time.Duration) error {
+
+	Interfaces := FilterVHostInterfaces(domainSpec)
+	if len(Interfaces) == 0 {
+		log.Log.Info("No vhost interface to detach.")
+		return nil
+	}
+
+	if err := eventDetach.Register(); err != nil {
+		return fmt.Errorf("failed to detach vhost interface: %v", err)
+	}
+	defer func() {
+		if err := eventDetach.Deregister(); err != nil {
+			log.Log.Reason(err).Errorf("failed to detach vhost Interface: %v", err)
+		}
+	}()
+
+	if err := detachVHostInterfaces(dom, Interfaces); err != nil {
+		return err
+	}
+
+	return waitVHostInterfacesToDetach(eventDetach, Interfaces, timeout)
+}
+
+func detachVHostInterfaces(dom deviceDetacher, Interfaces []api.Interface) error {
+	for _, Interface := range Interfaces {
+		devXML, err := xml.Marshal(Interface)
+		if err != nil {
+			return fmt.Errorf("failed to encode (xml) interface %v, err: %v", Interface, err)
+		}
+		err = dom.DetachDeviceFlags(string(devXML), affectLiveAndConfigLibvirtFlags)
+		if err != nil {
+			return fmt.Errorf("failed to detach vhost interface %s, err: %v", devXML, err)
+		}
+		log.Log.Infof("Successfully hot-unplug interface: %s ", Interface.Alias.GetName())
+	}
+	return nil
+}
+
+func waitVHostInterfacesToDetach(eventDetach eventRegistrar, Interfaces []api.Interface, timeout time.Duration) error {
+	var detachedInterfaces []string
+	var desiredDetachCount = len(Interfaces)
+
+	for {
+		select {
+		case deviceAlias := <-eventDetach.EventChannel():
+			if dev := InterfaceLookup(Interfaces, deviceAlias.(string)); dev != nil {
+				detachedInterfaces = append(detachedInterfaces, dev.Alias.GetName())
+			}
+			if desiredDetachCount == len(detachedInterfaces) {
+				return nil
+			}
+		case <-time.After(timeout):
+
+			return fmt.Errorf(
+				"failed to wait for Interface detach, timeout reached: %v/%v",
+				detachedInterfaces, VHostInterfaceNames(Interfaces))
+		}
+	}
+}
+
+func InterfaceLookup(Interfaces []api.Interface, deviceAlias string) *api.Interface {
+	deviceAlias = strings.TrimPrefix(deviceAlias, api.UserAliasPrefix)
+	for _, dev := range Interfaces {
+		if dev.Alias.GetName() == deviceAlias {
+			return &dev
+		}
+	}
+	return nil
+}
+
+func VHostInterfaceNames(Interfaces []api.Interface) []string {
+	var names []string
+	for _, dev := range Interfaces {
+		names = append(names, dev.Alias.GetName())
+	}
+	return names
+}

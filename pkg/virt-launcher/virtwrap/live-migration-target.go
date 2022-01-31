@@ -42,6 +42,9 @@ func (l *LibvirtDomainManager) finalizeMigrationTarget(vmi *v1.VirtualMachineIns
 		log.Log.Object(vmi).Reason(err).Error("failed to hot-plug host-devices")
 	}
 
+	if err := l.hotPlugVhostInterfaces(vmi); err != nil {
+		log.Log.Object(vmi).Reason(err).Error("failed to hot-plug Interface")
+	}
 	if err := l.setGuestTime(vmi); err != nil {
 		return err
 	}

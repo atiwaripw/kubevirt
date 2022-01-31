@@ -339,6 +339,30 @@ func (l *LibvirtDomainManager) hotPlugHostDevices(vmi *v1.VirtualMachineInstance
 	return nil
 }
 
+// hotPlugVhostInterface attach host-devices to running domain
+func (l *LibvirtDomainManager) hotPlugVhostInterfaces(vmi *v1.VirtualMachineInstance) error {
+	l.domainModifyLock.Lock()
+	defer l.domainModifyLock.Unlock()
+
+	domainName := api.VMINamespaceKeyFunc(vmi)
+	domain, err := l.virConn.LookupDomainByName(domainName)
+	if err != nil {
+		return err
+	}
+	defer domain.Free()
+
+	podNetInterfaces, err := getInterfaceListFromPodAnnotations(vmi.Spec.Domain.Devices.Interfaces)
+	if err != nil {
+		return err
+	}
+	virtioNetProhibited := false
+	domainInterfaces, _ := converter.CreateVhostInterfaces(vmi, virtioNetProhibited, podNetInterfaces)
+	if err := sriov.AttachVhostInterfaces(domain, domainInterfaces); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (l *LibvirtDomainManager) Exec(domainName, command string, args []string, timeoutSeconds int32) (string, error) {
 	return agent.GuestExec(l.virConn, domainName, command, args, timeoutSeconds)
 }
@@ -740,11 +764,6 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 			SecureLoader: secureBoot,
 		}
 	}
-	podNetInterfaces, err := getInterfaceListFromPodAnnotations(vmi.Spec.Domain.Devices.Interfaces)
-	if err != nil {
-		logger.Reason(err).Errorf("failed to get pod network infor from annotations")
-		return nil, err
-	}
 
 	// Map the VirtualMachineInstance to the Domain
 	c := &converter.ConverterContext{
@@ -758,7 +777,6 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 		UseVirtioTransitional: vmi.Spec.Domain.Devices.UseVirtioTransitional != nil && *vmi.Spec.Domain.Devices.UseVirtioTransitional,
 		PermanentVolumes:      permanentVolumes,
 		EphemeraldiskCreator:  l.ephemeralDiskCreator,
-		PodNetInterfaces:      podNetInterfaces,
 	}
 
 	if options != nil {
@@ -809,6 +827,12 @@ func (l *LibvirtDomainManager) generateConverterContext(vmi *v1.VirtualMachineIn
 			return nil, err
 		}
 		c.GPUHostDevices = gpuHostDevices
+		podNetInterfaces, err := getInterfaceListFromPodAnnotations(vmi.Spec.Domain.Devices.Interfaces)
+		if err != nil {
+			logger.Reason(err).Errorf("failed to get pod network infor from annotations")
+			return nil, err
+		}
+		c.PodNetInterfaces = podNetInterfaces
 	}
 
 	return c, nil

@@ -111,6 +111,10 @@ func hotUnplugHostDevices(virConn cli.Connection, dom cli.VirDomain) error {
 		if err != nil {
 			return err
 		}
+		err = sriov.SafelyDetachVHostInterfaces(domainSpec, domainEvent, dom, waitForDetachTimeout)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

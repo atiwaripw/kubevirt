@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	nettypes "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+	netutiltype "github.com/openshift/app-netutil/pkg/types"
 
 	v1 "kubevirt.io/client-go/apis/core/v1"
 	"kubevirt.io/client-go/log"
@@ -138,7 +139,7 @@ func createDomainInterfaces(vmi *v1.VirtualMachineInstance, domain *api.Domain, 
 			vhostPath, vhostMode, err := getVhostuserInfo(net.Multus.NetworkName, c)
 			if err != nil {
 				log.Log.Errorf("Failed to get vhostuser interface info: %v", err)
-				return nil, err
+				continue
 			}
 			vhostPathParts := strings.Split(vhostPath, "/")
 			vhostDevice := vhostPathParts[len(vhostPathParts)-1]
@@ -391,4 +392,94 @@ func getVhostuserInfo(ifaceName string, c *ConverterContext) (string, string, er
 	}
 	err := fmt.Errorf("Unable to get vhostuser interface info for %s", ifaceName)
 	return "", "", err
+}
+
+func getVhostuserInfoFM(ifaceName string, Interfaces *netutiltype.InterfaceResponse) (string, string, error) {
+	if Interfaces == nil {
+		err := fmt.Errorf("PodNetInterfaces cannot be nil for vhostuser interface")
+		return "", "", err
+	}
+	for _, iface := range Interfaces.Interface {
+		if iface.DeviceType == nettypes.DeviceInfoTypeVHostUser {
+			networkNameParts := strings.Split(iface.NetworkStatus.Name, "/")
+			if networkNameParts[len(networkNameParts)-1] == ifaceName {
+				return iface.NetworkStatus.DeviceInfo.VhostUser.Path, iface.NetworkStatus.DeviceInfo.VhostUser.Mode, nil
+			}
+		}
+
+	}
+	err := fmt.Errorf("Unable to get vhostuser interface info for %s", ifaceName)
+	return "", "", err
+}
+
+func CreateVhostInterfaces(vmi *v1.VirtualMachineInstance, virtioNetProhibited bool, podNetInterfaces *netutiltype.InterfaceResponse) ([]api.Interface, error) {
+
+	var domainInterfaces []api.Interface
+
+	networks := indexNetworksByName(vmi.Spec.Networks)
+
+	for i, iface := range vmi.Spec.Domain.Devices.Interfaces {
+		net, isExist := networks[iface.Name]
+		if !isExist {
+			return nil, fmt.Errorf("failed to find network %s", iface.Name)
+		}
+
+		ifaceType := getInterfaceType(&vmi.Spec.Domain.Devices.Interfaces[i])
+		domainIface := api.Interface{
+			Model: &api.Model{
+				Type: "virtio-non-transitional",
+			},
+			Alias: api.NewUserDefinedAlias(iface.Name),
+		}
+		// if AllowEmulation unset and at least one NIC model is virtio,
+		// /dev/vhost-net must be present as we should have asked for it.
+		var virtioNetMQRequested bool
+		if mq := vmi.Spec.Domain.Devices.NetworkInterfaceMultiQueue; mq != nil {
+			virtioNetMQRequested = *mq
+		}
+		if ifaceType == "virtio" && virtioNetProhibited {
+			return nil, fmt.Errorf("In-kernel virtio-net device emulation '/dev/vhost-net' not present")
+		} else if ifaceType == "virtio" && virtioNetMQRequested {
+			queueCount := uint(CalculateNetworkQueues(vmi))
+			domainIface.Driver = &api.InterfaceDriver{Name: "vhost", Queues: &queueCount}
+		}
+		// Add a pciAddress if specified
+		if iface.PciAddress != "" {
+			addr, err := device.NewPciAddressField(iface.PciAddress)
+			if err != nil {
+				return nil, fmt.Errorf("failed to configure interface %s: %v", iface.Name, err)
+			}
+			domainIface.Address = addr
+		}
+		if iface.Vhostuser != nil {
+			domainIface.Type = "vhostuser"
+			vhostPath, vhostMode, err := getVhostuserInfoFM(net.Multus.NetworkName, podNetInterfaces)
+			if err != nil {
+				log.Log.Errorf("Failed to get vhostuser interface info: %v", err)
+				return nil, err
+			}
+			vhostPathParts := strings.Split(vhostPath, "/")
+			vhostDevice := vhostPathParts[len(vhostPathParts)-1]
+			if len(vhostPathParts) == 1 {
+				vhostPath = services.VhostuserSocketDir + vhostPath
+			}
+			domainIface.Source = api.InterfaceSource{
+				Type: "unix",
+				Path: vhostPath,
+				Mode: vhostMode,
+			}
+			domainIface.Target = &api.InterfaceTarget{
+				Device: vhostDevice,
+			}
+			var vhostuserQueueSize uint32 = 1024
+			domainIface.Driver = &api.InterfaceDriver{
+				Name:        "vhost",
+				RxQueueSize: &vhostuserQueueSize,
+				TxQueueSize: &vhostuserQueueSize,
+			}
+		}
+		domainInterfaces = append(domainInterfaces, domainIface)
+	}
+
+	return domainInterfaces, nil
 }
